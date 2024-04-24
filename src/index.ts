@@ -7,7 +7,7 @@ const port = process.env.PORT || 4010;
 app.use(express.static(path.resolve("./public")));
 
 app.get("/", (req, res) => {
-  res.sendFile("public/index.ejs");
+  res.sendFile("public/index.html");
 });
 
 const server = app.listen(port, () =>
