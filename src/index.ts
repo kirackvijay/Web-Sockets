@@ -4,11 +4,10 @@ import path from "path";
 const app = express();
 const port = process.env.PORT || 4010;
 
-app.set("views", path.join(__dirname, "public"));
-app.set("view engine", "ejs");
+app.use(express.static(path.resolve("./public")));
 
 app.get("/", (req, res) => {
-  res.render("index");
+  res.sendFile("public/index.ejs");
 });
 
 const server = app.listen(port, () =>
