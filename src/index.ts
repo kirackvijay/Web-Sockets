@@ -1,40 +1,44 @@
 import express from "express";
+import { Server as socketIoServer } from "socket.io";
 import path from "path";
 
 const app = express();
 const port = process.env.PORT || 4000;
-
-app.use(express.static(path.resolve("./public")));
+app.use(express.static(path.resolve(__dirname, "public")));
 
 app.get("/", (req, res) => {
-  res.sendFile("public/index.html");
+  res.sendFile(path.resolve(__dirname, "public", "index.html"));
 });
 
-const server = app.listen(port, () =>
-  console.log(`👻 Server is Running http://localhost:${port}`)
-);
-import { Server as socketIoServer } from "socket.io";
-const io: socketIoServer = new socketIoServer(server);
-let socketConnected: any = new Set();
+const server = app.listen(port, () => {
+  console.log(`👻 Server is running at http://localhost:${port}`);
+});
 
-const onConnected = (socket: { [x: string]: any; id: any }) => {
-  console.log(socket.id);
-  socketConnected.add(socket.id);
-  io.emit("clients-total", socketConnected.size);
+const io = new socketIoServer(server);
+const socketConnected = new Set();
 
-  socket.on("disconnect", () => {
-    console.log(`socket Disconnected`, socket.id);
+io.on("connection", (socket) => {
+  const onConnected = () => {
+    console.log(`Socket connected: ${socket.id}`);
+    socketConnected.add(socket.id);
+    io.emit("clients-total", socketConnected.size);
+  };
+  const onDisconnected = () => {
+    console.log(`Socket disconnected: ${socket.id}`);
     socketConnected.delete(socket.id);
     io.emit("clients-total", socketConnected.size);
-  });
-  socket.on("message", (data: any) => {
-    // console.log(data)
+  };
+  socket.on("disconnect", onDisconnected);
+  socket.on("message", (data) => {
     socket.broadcast.emit("chat-message", data);
   });
-
-  socket.on("feedback", (data: any) => {
+  socket.on("feedback", (data) => {
     socket.broadcast.emit("feedback", data);
   });
-};
-io.on("connection", onConnected);
-app.use(express.static(path.join(__dirname, "public")));
+
+  onConnected();
+  socket.on("disconnect", () => {
+    onDisconnected();
+    socket.removeAllListeners();
+  });
+});
