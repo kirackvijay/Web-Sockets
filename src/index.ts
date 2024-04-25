@@ -1,44 +1,40 @@
 import express from "express";
-import { Server as socketIoServer } from "socket.io";
 import path from "path";
 
 const app = express();
 const port = process.env.PORT || 4000;
-app.use(express.static(path.resolve(__dirname, "public")));
+
+app.use(express.static(path.resolve("./public")));
 
 app.get("/", (req, res) => {
-  res.sendFile(path.resolve(__dirname, "public", "index.html"));
+  res.sendFile("public/index.html");
 });
 
-const server = app.listen(port, () => {
-  console.log(`👻 Server is running at http://localhost:${port}`);
-});
+const server = app.listen(port, () =>
+  console.log(`👻 Server is Running http://localhost:${port}`)
+);
+import { Server as socketIoServer } from "socket.io";
+const io: socketIoServer = new socketIoServer(server);
+let socketConnected: any = new Set();
 
-const io = new socketIoServer(server);
-const socketConnected = new Set();
+const onConnected = (socket: { [x: string]: any; id: any }) => {
+  console.log(socket.id);
+  socketConnected.add(socket.id);
+  io.emit("clients-total", socketConnected.size);
 
-io.on("connection", (socket) => {
-  const onConnected = () => {
-    console.log(`Socket connected: ${socket.id}`);
-    socketConnected.add(socket.id);
-    io.emit("clients-total", socketConnected.size);
-  };
-  const onDisconnected = () => {
-    console.log(`Socket disconnected: ${socket.id}`);
+  socket.on("disconnect", () => {
+    console.log(`socket Disconnected`, socket.id);
     socketConnected.delete(socket.id);
     io.emit("clients-total", socketConnected.size);
-  };
-  socket.on("disconnect", onDisconnected);
-  socket.on("message", (data) => {
+  });
+  socket.on("message", (data: any) => {
+    // console.log(data)
     socket.broadcast.emit("chat-message", data);
   });
-  socket.on("feedback", (data) => {
+
+  socket.on("feedback", (data: any) => {
     socket.broadcast.emit("feedback", data);
   });
-
-  onConnected();
-  socket.on("disconnect", () => {
-    onDisconnected();
-    socket.removeAllListeners();
-  });
-});
+};
+io.on("connection", onConnected);
+app.use(express.static(path.join(__dirname, "public")));
